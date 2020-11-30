@@ -484,6 +484,7 @@ shell_command_set_fan_power(ShellIntf* intf, int argc, const char** argv)
 static void
 shell_command_settings(ShellIntf* intf, int argc, const char** argv)
 {
+#if 0
   settings_t* s = settings_get();
   uint8_t   freq_int, freq_dec;
 
@@ -503,6 +504,7 @@ shell_command_settings(ShellIntf* intf, int argc, const char** argv)
 
   shell_printf(intf, "op pulse  %d ms\n", s->oil_pump_pulse_length);
   shell_printf(intf, "fan pwr3  %d %%\n", s->fan_default_power);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
