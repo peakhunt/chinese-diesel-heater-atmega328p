@@ -1,0 +1,36 @@
+LED                                                   Used
+  PB5                                                 PB1,PB2,PB3,PB4,PB5
+                                                      PC0,PC1,PC2,PC3,PC4,PC5
+PWM                                                   PD0,PD1,PD2,PD3
+  PB1
+  PB2                                                 Availabl
+                                                      PB0, PC6
+GPIO Out
+  PD2
+  PD3
+  PD4
+
+GPIO In
+  PD5
+  PD6
+  PD7
+
+ADC
+  PC0
+  PC1
+  PC2
+  PC3
+
+I2C
+  PC4
+  PC5
+
+SPI
+  PB3
+  PB4
+  PB5
+  XXX - CS
+
+UART
+  PD0
+  PD1
