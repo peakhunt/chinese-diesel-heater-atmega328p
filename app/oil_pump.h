@@ -8,8 +8,8 @@
 #define OIL_PUMP_DEF_FREQ     1.0f      // 1.6Hz
 #define OIL_PUMP_PULSE_LENGTH 50        // 50ms
 
-#define OIL_PUMP_MIN_FREQ     0.5f
-#define OIL_PUMP_MAX_FREQ     1.8f
+#define OIL_PUMP_MIN_FREQ     0.8f
+#define OIL_PUMP_MAX_FREQ     5.0f
 
 typedef struct
 {
