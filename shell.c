@@ -28,7 +28,6 @@
 
 // avr specific
 #define FSTR(s)   PSTR(s)
-#define FLASH     __flash
 //#define shell_printf_P                  shell_printf
 static void shell_printf_P(ShellIntf* intf, const char* fmt, ...) __attribute__((format(gnu_printf, 2, 3)));
 
@@ -40,7 +39,6 @@ typedef void (*shell_command_handler)(ShellIntf* intf, int argc, const char** ar
 typedef struct
 {
   const char*           command;
-  const char*           description;
   shell_command_handler handler;
 } ShellCommand;
 
@@ -123,87 +121,71 @@ static const ShellCommand const _commands[] =
 {
   {
     "help",
-    "show this command",
     shell_command_help,
   },
   {
     "version",
-    "show version",
     shell_command_version,
   },
   {
     "uptime",
-    "show uptime",
     shell_command_uptime,
   },
   {
     "pwm",
-    "control pwm",
     shell_command_pwm,
   },
   {
     "adc",
-    "show adc values",
     shell_command_adc,
   },
   {
     "gpio_out",
-    "control gpio out",
     shell_command_gpio_out,
   },
   {
     "gpio_in",
-    "show gpio in state",
     shell_command_gpio_in,
   },
   {
     "start",
-    "start heater",
     shell_command_start,
   },
   {
     "stop",
-    "stop heater",
     shell_command_stop,
   },
   {
     "status",
-    "show heater status",
     shell_command_status,
   },
   {
     "glow",
-    "control glow plug",
     shell_command_glow,
   },
   {
     "oil",
-    "control oil pump",
     shell_command_oil,
   },
   {
     "fan",
-    "control fan",
     shell_command_fan,
   },
   {
     "pump_freq",
-    "set oil pump frequency",
     shell_command_set_oil_pump_freq,
   },
   {
     "fan_power",
-    "set fan power",
     shell_command_set_fan_power,
   },
   {
     "settings",
-    "show settings",
     shell_command_settings,
   },
 };
 
-static const char* const FLASH
+static const char* 
 heater_state_desc[] = 
 {
   "off",
@@ -214,7 +196,7 @@ heater_state_desc[] =
   "cooling",
 };
 
-static const char* const FLASH
+static const char*
 on_off_str[] =
 {
   "off",
@@ -241,24 +223,34 @@ shell_prompt(ShellIntf* intf)
 static void
 shell_command_help(ShellIntf* intf, int argc, const char** argv)
 {
-  size_t i;
-
   shell_printf_P(intf, FSTR("\r\n"));
 
-  for(i = 0; i < sizeof(_commands)/sizeof(ShellCommand); i++)
-  {
-    shell_printf_P(intf, FSTR("%-20s: "), _commands[i].command);
-    shell_printf_P(intf, FSTR("%s\r\n"), _commands[i].description);
-  }
+  // I know.
+  // to reduce sram usage
+  //
+  shell_printf_P(intf, FSTR("help                : show this command\r\n"));
+  shell_printf_P(intf, FSTR("version             : show version\r\n"));
+  shell_printf_P(intf, FSTR("uptime              : show uptime\r\n"));
+  shell_printf_P(intf, FSTR("pwm                 : control pwm\r\n"));
+  shell_printf_P(intf, FSTR("adc                 : show adc values\r\n"));
+  shell_printf_P(intf, FSTR("gpio_out            : control gpio out\r\n"));
+  shell_printf_P(intf, FSTR("gpio_in             : show gpio in state\r\n"));
+  shell_printf_P(intf, FSTR("start               : start heater\r\n"));
+  shell_printf_P(intf, FSTR("stop                : stop heater\r\n"));
+  shell_printf_P(intf, FSTR("status              : show heater status\r\n"));
+  shell_printf_P(intf, FSTR("glow                : control glow plug\r\n"));
+  shell_printf_P(intf, FSTR("oil                 : control oil pump\r\n"));
+  shell_printf_P(intf, FSTR("fan                 : control fan\r\n"));
+  shell_printf_P(intf, FSTR("pump_freq           : set oil pump frequency\r\n"));
+  shell_printf_P(intf, FSTR("fan_power           : set fan power\r\n"));
+  shell_printf_P(intf, FSTR("settings            : show settings\r\n"));
 }
 
 static void
 shell_command_version(ShellIntf* intf, int argc, const char** argv)
 {
-  static const char* const FLASH _version = "Heater V0.2a";
-
   shell_printf_P(intf, FSTR("\r\n"));
-  shell_printf_P(intf, FSTR("%s\r\n"), _version);
+  shell_printf_P(intf, FSTR("Heater V0.2a\r\n"));
 }
 
 static void
@@ -344,7 +336,7 @@ shell_command_gpio_out(ShellIntf* intf, int argc, const char** argv)
 static void
 shell_command_gpio_in(ShellIntf* intf, int argc, const char** argv)
 {
-  static const char* const FLASH pin_states[] =
+  static const char* pin_states[] =
   {
     "low",
     "low to high",
@@ -534,19 +526,19 @@ shell_command_settings(ShellIntf* intf, int argc, const char** argv)
 
   shell_printf_P(intf, FSTR("\r\n"));
 
-  shell_printf_P(intf, FSTR("glow plug on duration for start %ld sec\r\n"), s->glow_plug_on_duration_for_start / 1000);
-  shell_printf_P(intf, FSTR("oil pump priming duratuin       %ld sec\r\n"), s->oil_pump_priming_duration / 1000);
-  shell_printf_P(intf, FSTR("glow plug on duration for stop  %ld sec\r\n"), s->glow_plug_on_duration_for_stop / 1000);
-  shell_printf_P(intf, FSTR("cooling down period             %ld sec\r\n"), s->cooling_down_period / 1000);
-  shell_printf_P(intf, FSTR("start-up fan power              %d %%\r\n"), s->startup_fan_power);
-  shell_printf_P(intf, FSTR("stop fan power                  %d %%\r\n"), s->stop_fan_power);
-  shell_printf_P(intf, FSTR("glow plug PWM frequency         %d Hz\r\n"), s->glow_plug_pwm_freq);
-  shell_printf_P(intf, FSTR("glow plug PWM duty              %d %%\r\n"), s->glow_plug_pwm_duty);
+  shell_printf_P(intf, FSTR("0. glow plug on duration for start %ld sec\r\n"), s->glow_plug_on_duration_for_start / 1000);
+  shell_printf_P(intf, FSTR("1. oil pump priming duratuin       %ld sec\r\n"), s->oil_pump_priming_duration / 1000);
+  shell_printf_P(intf, FSTR("2. glow plug on duration for stop  %ld sec\r\n"), s->glow_plug_on_duration_for_stop / 1000);
+  shell_printf_P(intf, FSTR("3. cooling down period             %ld sec\r\n"), s->cooling_down_period / 1000);
+  shell_printf_P(intf, FSTR("4. start-up fan power              %d %%\r\n"), s->startup_fan_power);
+  shell_printf_P(intf, FSTR("5. stop fan power                  %d %%\r\n"), s->stop_fan_power);
+  shell_printf_P(intf, FSTR("6. glow plug PWM frequency         %d Hz\r\n"), s->glow_plug_pwm_freq);
+  shell_printf_P(intf, FSTR("7. glow plug PWM duty              %d %%\r\n"), s->glow_plug_pwm_duty);
 
   __float_to_int_1dec(s->oil_pump_freq, &freq_int, &freq_dec);
-  shell_printf_P(intf, FSTR("oil pump frequency              %d.%d Hz\r\n"), freq_int, freq_dec);
-  shell_printf_P(intf, FSTR("oil pump pulse length           %d ms\r\n"), s->oil_pump_pulse_length);
-  shell_printf_P(intf, FSTR("fan default power               %d %%\r\n"), s->fan_default_power);
+  shell_printf_P(intf, FSTR("8. oil pump frequency              %d.%d Hz\r\n"), freq_int, freq_dec);
+  shell_printf_P(intf, FSTR("9. oil pump pulse length           %d ms\r\n"), s->oil_pump_pulse_length);
+  shell_printf_P(intf, FSTR("10.fan default power               %d %%\r\n"), s->fan_default_power);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
