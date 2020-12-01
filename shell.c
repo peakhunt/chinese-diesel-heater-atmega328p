@@ -3,6 +3,9 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
+#include <avr/io.h>
+#include <avr/pgmspace.h>
 
 #include "app_common.h"
 #include "shell.h"
@@ -23,10 +26,14 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+// avr specific
+#define FSTR(s)   PSTR(s)
+#define FLASH     __flash
+//#define shell_printf_P                  shell_printf
+static void shell_printf_P(ShellIntf* intf, const char* fmt, ...) __attribute__((format(gnu_printf, 2, 3)));
+
 #define SHELL_MAX_COLUMNS_PER_LINE      80
 #define SHELL_COMMAND_MAX_ARGS          4
-
-#define VERSION       "Heater V0.2a"
 
 typedef void (*shell_command_handler)(ShellIntf* intf, int argc, const char** argv);
 
@@ -45,6 +52,7 @@ typedef struct
 static void shell_command_help(ShellIntf* intf, int argc, const char** argv);
 static void shell_command_version(ShellIntf* intf, int argc, const char** argv);
 static void shell_command_uptime(ShellIntf* intf, int argc, const char** argv);
+
 static void shell_command_pwm(ShellIntf* intf, int argc, const char** argv);
 static void shell_command_adc(ShellIntf* intf, int argc, const char** argv);
 static void shell_command_gpio_out(ShellIntf* intf, int argc, const char** argv);
@@ -64,17 +72,54 @@ static void shell_command_settings(ShellIntf* intf, int argc, const char** argv)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// common utilities
+//
+////////////////////////////////////////////////////////////////////////////////
+static inline int
+fcompare(float a, float b)
+{
+  //
+  // returns -1 when a < b
+  //          1 when a > b
+  //          0 when equal
+  //
+#define FLT_EPSILON 0.000001f
+
+  float d = a - b;
+
+  if (d >= -FLT_EPSILON && d <= FLT_EPSILON)
+  {
+    return 0;
+  }
+
+  if(d < -FLT_EPSILON)
+  {
+    // a is less than b
+    return -1;
+  }
+
+  // a is bigger than b
+  return 1;
+}
+
+static inline void
+__float_to_int_1dec(float f, uint8_t* i, uint8_t* d)
+{
+  uint8_t   freq10x = (uint8_t)(f * 10);
+  *i = (uint8_t)(freq10x / 10);
+  *d = (uint8_t)(freq10x - (*i * 10));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // private variables
 //
 ////////////////////////////////////////////////////////////////////////////////
-const uint8_t                 _welcome[] = "\r\n**** Welcome ****\r\n";
-const uint8_t                 _prompt[]  = "\r\nHeater> ";
-
 static char                   _print_buffer[SHELL_MAX_COLUMNS_PER_LINE + 1];
 
 static LIST_HEAD(_shell_intf_list);
 
-static const ShellCommand     _commands[] = 
+static const ShellCommand const _commands[] = 
 {
   {
     "help",
@@ -158,7 +203,7 @@ static const ShellCommand     _commands[] =
   },
 };
 
-static const char*
+static const char* const FLASH
 heater_state_desc[] = 
 {
   "off",
@@ -169,6 +214,13 @@ heater_state_desc[] =
   "cooling",
 };
 
+static const char* const FLASH
+on_off_str[] =
+{
+  "off",
+  "on",
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // shell utilities
@@ -177,9 +229,7 @@ heater_state_desc[] =
 static inline void
 shell_prompt(ShellIntf* intf)
 {
-  do
-  {
-  } while(intf->put_tx_data(intf, (uint8_t*)_prompt, sizeof(_prompt) -1) == false);
+  shell_printf_P(intf, FSTR("\r\nHeater> "));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,40 +237,35 @@ shell_prompt(ShellIntf* intf)
 // shell command handlers
 //
 ////////////////////////////////////////////////////////////////////////////////
-static inline void
-__float_to_int_1dec(float f, uint8_t* i, uint8_t* d)
-{
-  uint8_t   freq10x = (uint8_t)(f * 10);
-  *i = (uint8_t)(freq10x / 10);
-  *d = (uint8_t)(freq10x - (*i * 10));
-}
 
 static void
 shell_command_help(ShellIntf* intf, int argc, const char** argv)
 {
   size_t i;
 
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
   for(i = 0; i < sizeof(_commands)/sizeof(ShellCommand); i++)
   {
-    shell_printf(intf, "%-20s: ", _commands[i].command);
-    shell_printf(intf, "%s\r\n", _commands[i].description);
+    shell_printf_P(intf, FSTR("%-20s: "), _commands[i].command);
+    shell_printf_P(intf, FSTR("%s\r\n"), _commands[i].description);
   }
 }
 
 static void
 shell_command_version(ShellIntf* intf, int argc, const char** argv)
 {
-  shell_printf(intf, "\r\n");
-  shell_printf(intf, "%s\r\n", VERSION);
+  static const char* const FLASH _version = "Heater V0.2a";
+
+  shell_printf_P(intf, FSTR("\r\n"));
+  shell_printf_P(intf, FSTR("%s\r\n"), _version);
 }
 
 static void
 shell_command_uptime(ShellIntf* intf, int argc, const char** argv)
 {
-  shell_printf(intf, "\r\n");
-  shell_printf(intf, "%ld seconds\r\n", __uptime);
+  shell_printf_P(intf, FSTR("\r\n"));
+  shell_printf_P(intf, FSTR("%ld seconds\r\n"), __uptime);
 }
 
 static void
@@ -229,11 +274,11 @@ shell_command_pwm(ShellIntf* intf, int argc, const char** argv)
   pwm_channel_t chnl;
   uint8_t       pct;
 
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
   if(argc != 3)
   {
-    shell_printf(intf, "invalid %s <chnl> <percent>\r\n", argv[0]);
+    shell_printf_P(intf, FSTR("invalid %s <chnl> <percent>\r\n"), argv[0]);
     return;
   }
 
@@ -242,29 +287,29 @@ shell_command_pwm(ShellIntf* intf, int argc, const char** argv)
 
   if(chnl < 0 || chnl >= PWM_MAX_CHANNEL)
   {
-    shell_printf(intf, "Invalid channel %d\r\n", chnl);
+    shell_printf_P(intf, FSTR("Invalid channel %d\r\n"), chnl);
     return;
   }
 
   if(pct < 0 || pct > 100)
   {
-    shell_printf(intf, "Invalid percent %d\r\n", pct);
+    shell_printf_P(intf, FSTR("Invalid percent %d\r\n"), pct);
     return;
   }
 
   pwm_control(chnl, pct);
 
-  shell_printf(intf, "set pwm channel %d to %d percent\r\n", chnl, pct);
+  shell_printf_P(intf, FSTR("set pwm channel %d to %d percent\r\n"), chnl, pct);
 }
 
 static void
 shell_command_adc(ShellIntf* intf, int argc, const char** argv)
 {
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
   for(uint8_t i = 0; i < ADC_MAX_CHANNELS; i++)
   {
-    shell_printf(intf, "ADC CH %d - %d\r\n", i, adc_get(i));
+    shell_printf_P(intf, FSTR("ADC CH %d - %d\r\n"), i, adc_get(i));
   }
 }
 
@@ -273,11 +318,11 @@ shell_command_gpio_out(ShellIntf* intf, int argc, const char** argv)
 {
   uint8_t pin, v;
 
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
   if(argc != 3)
   {
-    shell_printf(intf, "invalid %s <pin> <value>\r\n", argv[0]);
+    shell_printf_P(intf, FSTR("invalid %s <pin> <value>\r\n"), argv[0]);
     return;
   }
 
@@ -287,19 +332,19 @@ shell_command_gpio_out(ShellIntf* intf, int argc, const char** argv)
 
   if(pin >= GPIO_MAX_OUTPUT)
   {
-    shell_printf(intf, "Invalid pin %d\r\n", pin);
+    shell_printf_P(intf, FSTR("Invalid pin %d\r\n"), pin);
     return;
   }
 
   gpio_set((gpio_out_pin_t)pin, v);
 
-  shell_printf(intf, "set gpio out %d to %d\r\n", pin, v);
+  shell_printf_P(intf, FSTR("set gpio out %d to %d\r\n"), pin, v);
 }
 
 static void
 shell_command_gpio_in(ShellIntf* intf, int argc, const char** argv)
 {
-  static const char* pin_states[] =
+  static const char* const FLASH pin_states[] =
   {
     "low",
     "low to high",
@@ -307,11 +352,11 @@ shell_command_gpio_in(ShellIntf* intf, int argc, const char** argv)
     "high to low",
   };
 
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
   for(uint8_t i = 0; i < GPIO_MAX_INPUT; i++)
   {
-    shell_printf(intf, "gpio in %d - %d, %s\r\n",
+    shell_printf_P(intf, FSTR("gpio in %d - %d, %s\r\n"),
       i,
       gpio_get((gpio_in_pin_t)i),
       pin_states[gpio_get_state((gpio_in_pin_t)i)]
@@ -339,26 +384,26 @@ shell_command_status(ShellIntf* intf, int argc, const char** argv)
 
   __float_to_int_1dec(heater->oil_pump.freq, &freq_int, &freq_dec);
 
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
-  shell_printf(intf, "state : %s\r\n", heater_state_desc[heater->state]);
-  shell_printf(intf, "pump  : %s, freq %d.%d Hz\r\n",
-      heater->oil_pump.on ? "on" : "off",
+  shell_printf_P(intf, FSTR("state : %s\r\n"), heater_state_desc[heater->state]);
+  shell_printf_P(intf, FSTR("pump  : %s, freq %d.%d Hz\r\n"),
+      on_off_str[heater->oil_pump.on],
       freq_int, freq_dec);
-  shell_printf(intf, "glow  : %s\r\n", heater->glow_plug.on ? "on" : "off");
-  shell_printf(intf, "fan   : %s, power %d%%\r\n",
-      heater->fan.on ? "on" : "off",
+  shell_printf_P(intf, FSTR("glow  : %s\r\n"), on_off_str[heater->glow_plug.on]);
+  shell_printf_P(intf, FSTR("fan   : %s, power %d%%\r\n"),
+      on_off_str[heater->fan.on],
       heater->fan.pwr);
 }
 
 static void
 shell_command_glow(ShellIntf* intf, int argc, const char** argv)
 {
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
   if(argc != 2)
   {
-    shell_printf(intf, "invalid %s on|off\r\n", argv[0]);
+    shell_printf_P(intf, FSTR("invalid %s on|off\r\n"), argv[0]);
     return;
   }
 
@@ -372,20 +417,20 @@ shell_command_glow(ShellIntf* intf, int argc, const char** argv)
   }
   else
   {
-    shell_printf(intf, "invalid %s on|off\r\n", argv[0]);
+    shell_printf_P(intf, FSTR("invalid %s on|off\r\n"), argv[0]);
     return;
   }
-  shell_printf(intf, "turned %s glow plug\r\n", argv[1]);
+  shell_printf_P(intf, FSTR("turned %s glow plug\r\n"), argv[1]);
 }
 
 static void
 shell_command_oil(ShellIntf* intf, int argc, const char** argv)
 {
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
   if(argc != 2)
   {
-    shell_printf(intf, "invalid %s on|off\r\n", argv[0]);
+    shell_printf_P(intf, FSTR("invalid %s on|off\r\n"), argv[0]);
     return;
   }
 
@@ -399,20 +444,20 @@ shell_command_oil(ShellIntf* intf, int argc, const char** argv)
   }
   else
   {
-    shell_printf(intf, "invalid %s on|off\r\n", argv[0]);
+    shell_printf_P(intf, FSTR("invalid %s on|off\r\n"), argv[0]);
     return;
   }
-  shell_printf(intf, "turned %s oil pump\r\n", argv[1]);
+  shell_printf_P(intf, FSTR("turned %s oil pump\r\n"), argv[1]);
 }
 
 static void
 shell_command_fan(ShellIntf* intf, int argc, const char** argv)
 {
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
   if(argc != 2)
   {
-    shell_printf(intf, "invalid %s on|off\r\n", argv[0]);
+    shell_printf_P(intf, FSTR("invalid %s on|off\r\n"), argv[0]);
     return;
   }
 
@@ -426,10 +471,10 @@ shell_command_fan(ShellIntf* intf, int argc, const char** argv)
   }
   else
   {
-    shell_printf(intf, "invalid %s on|off\r\n", argv[0]);
+    shell_printf_P(intf, FSTR("invalid %s on|off\r\n"), argv[0]);
     return;
   }
-  shell_printf(intf, "turned %s fan\r\n", argv[1]);
+  shell_printf_P(intf, FSTR("turned %s fan\r\n"), argv[1]);
 }
 
 static void
@@ -437,19 +482,19 @@ shell_command_set_oil_pump_freq(ShellIntf* intf, int argc, const char** argv)
 {
   float freq;
 
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
   if(argc != 2)
   {
-    shell_printf(intf, "invalid %s <freq>\r\n", argv[0]);
+    shell_printf_P(intf, FSTR("invalid %s <freq>\r\n"), argv[0]);
     return;
   }
 
   freq = atof(argv[1]);
 
-  if(freq < OIL_PUMP_MIN_FREQ || freq > OIL_PUMP_MAX_FREQ)
+  if(fcompare(freq, OIL_PUMP_MIN_FREQ) < 0 || fcompare(freq, OIL_PUMP_MAX_FREQ) > 0)
   {
-    shell_printf(intf, "Invalid frequency\r\n");
+    shell_printf_P(intf, FSTR("Invalid frequency\r\n"));
     return;
   }
 
@@ -461,11 +506,11 @@ shell_command_set_fan_power(ShellIntf* intf, int argc, const char** argv)
 {
   uint8_t pwr;
 
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
   if(argc != 2)
   {
-    shell_printf(intf, "invalid %s <pwr>\r\n", argv[0]);
+    shell_printf_P(intf, FSTR("invalid %s <pwr>\r\n"), argv[0]);
     return;
   }
 
@@ -473,38 +518,35 @@ shell_command_set_fan_power(ShellIntf* intf, int argc, const char** argv)
 
   if(pwr < 0 || pwr > 100)
   {
-    shell_printf(intf, "invalid: should be between 0 and 100\r\n");
+    shell_printf_P(intf, FSTR("invalid: should be between 0 and 100\r\n"));
     return;
   }
 
   heater_fan_power(pwr);
-  shell_printf(intf, "set power to %d\r\n", pwr);
+  shell_printf_P(intf, FSTR("set power to %d\r\n"), pwr);
 }
 
 static void
 shell_command_settings(ShellIntf* intf, int argc, const char** argv)
 {
-#if 0
   settings_t* s = settings_get();
   uint8_t   freq_int, freq_dec;
 
-  shell_printf(intf, "\r\n");
+  shell_printf_P(intf, FSTR("\r\n"));
 
-  shell_printf(intf, "gplug on1 %ld sec\r\n", s->glow_plug_on_duration_for_start / 1000);
-  shell_printf(intf, "opriming  %ld sec\r\n", s->oil_pump_priming_duration / 1000);
-  shell_printf(intf, "gplug on2 %ld sec\r\n", s->glow_plug_on_duration_for_stop / 1000);
-  shell_printf(intf, "cool down %ld sec\r\n", s->cooling_down_period / 1000);
-  shell_printf(intf, "fan pwr1  %d %%\r\n", s->startup_fan_power);
-  shell_printf(intf, "fan pwr2  %d %%\r\n", s->stop_fan_power);
-  shell_printf(intf, "gplug frq %d Hz\n", s->glow_plug_pwm_freq);
-  shell_printf(intf, "gplug dty %d %%\n", s->glow_plug_pwm_duty);
+  shell_printf_P(intf, FSTR("glow plug on duration for start %ld sec\r\n"), s->glow_plug_on_duration_for_start / 1000);
+  shell_printf_P(intf, FSTR("oil pump priming duratuin       %ld sec\r\n"), s->oil_pump_priming_duration / 1000);
+  shell_printf_P(intf, FSTR("glow plug on duration for stop  %ld sec\r\n"), s->glow_plug_on_duration_for_stop / 1000);
+  shell_printf_P(intf, FSTR("cooling down period             %ld sec\r\n"), s->cooling_down_period / 1000);
+  shell_printf_P(intf, FSTR("start-up fan power              %d %%\r\n"), s->startup_fan_power);
+  shell_printf_P(intf, FSTR("stop fan power                  %d %%\r\n"), s->stop_fan_power);
+  shell_printf_P(intf, FSTR("glow plug PWM frequency         %d Hz\r\n"), s->glow_plug_pwm_freq);
+  shell_printf_P(intf, FSTR("glow plug PWM duty              %d %%\r\n"), s->glow_plug_pwm_duty);
 
-  __float_to_int_1dec(s->glow_plug_pwm_freq, &freq_int, &freq_dec);
-  shell_printf(intf, "op freq   %d.%d Hz\n", freq_int, freq_dec);
-
-  shell_printf(intf, "op pulse  %d ms\n", s->oil_pump_pulse_length);
-  shell_printf(intf, "fan pwr3  %d %%\n", s->fan_default_power);
-#endif
+  __float_to_int_1dec(s->oil_pump_freq, &freq_int, &freq_dec);
+  shell_printf_P(intf, FSTR("oil pump frequency              %d.%d Hz\r\n"), freq_int, freq_dec);
+  shell_printf_P(intf, FSTR("oil pump pulse length           %d ms\r\n"), s->oil_pump_pulse_length);
+  shell_printf_P(intf, FSTR("fan default power               %d %%\r\n"), s->fan_default_power);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -524,7 +566,7 @@ shell_execute_command(ShellIntf* intf, char* cmd)
   {
     if(argc >= SHELL_COMMAND_MAX_ARGS)
     {
-      shell_printf(intf, "\r\nError: too many arguments\r\n");
+      shell_printf_P(intf, FSTR("\r\nError: too many arguments\r\n"));
       return;
     }
     argv[argc++] = s;
@@ -539,14 +581,14 @@ shell_execute_command(ShellIntf* intf, char* cmd)
   {
     if(strcmp(_commands[i].command, argv[0]) == 0)
     {
-      shell_printf(intf, "\r\nExecuting %s\r\n", argv[0]);
+      shell_printf_P(intf, FSTR("\r\nExecuting %s\r\n"), argv[0]);
       _commands[i].handler(intf, argc, argv);
       return;
     }
   }
-  shell_printf(intf, "%s", "\r\nUnknown Command: ");
-  shell_printf(intf, "%s", argv[0]);
-  shell_printf(intf, "%s", "\r\n");
+  shell_printf_P(intf, FSTR("\r\nUnknown Command: "));
+  shell_printf_P(intf, FSTR("%s"), argv[0]);
+  shell_printf_P(intf, FSTR("\r\n"));
 }
 
 
@@ -558,6 +600,26 @@ shell_printf(ShellIntf* intf, const char* fmt, ...)
 
   va_start(args, fmt);
   len = vsnprintf(_print_buffer, SHELL_MAX_COLUMNS_PER_LINE, fmt, args);
+  va_end(args);
+
+  if(len > CLI_TX_BUFFER_LENGTH)
+  {
+    return;
+  }
+
+  do
+  {
+  } while(intf->put_tx_data(intf, (uint8_t*)_print_buffer, len) == false);
+}
+
+void
+shell_printf_P(ShellIntf* intf, const char* fmt, ...)
+{
+  va_list   args;
+  int       len;
+
+  va_start(args, fmt);
+  len = vsnprintf_P(_print_buffer, SHELL_MAX_COLUMNS_PER_LINE, fmt, args);
   va_end(args);
 
   if(len > CLI_TX_BUFFER_LENGTH)
@@ -605,7 +667,7 @@ shell_start(void)
 
   list_for_each_entry(intf, &_shell_intf_list, lh)
   {
-    intf->put_tx_data(intf, (uint8_t*)_welcome, sizeof(_welcome) -1);
+    shell_printf_P(intf, FSTR("\r\n**** Welcome ****\r\n"));
     shell_prompt(intf);
   }
 }
