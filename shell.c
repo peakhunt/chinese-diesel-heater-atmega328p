@@ -66,7 +66,9 @@ static void shell_command_fan(ShellIntf* intf, int argc, const char** argv);
 static void shell_command_set_oil_pump_freq(ShellIntf* intf, int argc, const char** argv);
 static void shell_command_set_fan_power(ShellIntf* intf, int argc, const char** argv);
 static void shell_command_settings(ShellIntf* intf, int argc, const char** argv);
-
+static void shell_command_mod(ShellIntf* intf, int argc, const char** argv);
+static void shell_command_save(ShellIntf* intf, int argc, const char** argv);
+static void shell_command_reset(ShellIntf* intf, int argc, const char** argv);
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -183,6 +185,18 @@ static const ShellCommand const _commands[] =
     "settings",
     shell_command_settings,
   },
+  {
+    "mod",
+    shell_command_mod,
+  },
+  {
+    "save",
+    shell_command_save,
+  },
+  {
+    "reset",
+    shell_command_reset,
+  },
 };
 
 static const char* 
@@ -244,6 +258,8 @@ shell_command_help(ShellIntf* intf, int argc, const char** argv)
   shell_printf_P(intf, FSTR("pump_freq           : set oil pump frequency\r\n"));
   shell_printf_P(intf, FSTR("fan_power           : set fan power\r\n"));
   shell_printf_P(intf, FSTR("settings            : show settings\r\n"));
+  shell_printf_P(intf, FSTR("mod                 : change settings\r\n"));
+  shell_printf_P(intf, FSTR("save                : save settings\r\n"));
 }
 
 static void
@@ -539,6 +555,164 @@ shell_command_settings(ShellIntf* intf, int argc, const char** argv)
   shell_printf_P(intf, FSTR("8. oil pump frequency              %d.%d Hz\r\n"), freq_int, freq_dec);
   shell_printf_P(intf, FSTR("9. oil pump pulse length           %d ms\r\n"), s->oil_pump_pulse_length);
   shell_printf_P(intf, FSTR("10.fan default power               %d %%\r\n"), s->fan_default_power);
+}
+
+static void
+shell_command_mod(ShellIntf* intf, int argc, const char** argv)
+{
+  uint8_t       num;
+  uint32_t      iv;
+  float         fv;
+  settings_t*   s = settings_get();
+
+  shell_printf_P(intf, FSTR("\r\n"));
+
+  if(argc != 3)
+  {
+    shell_printf_P(intf, FSTR("invalid %s <setting number> <value>\r\n"), argv[0]);
+    return;
+  }
+
+  num = atoi(argv[1]);
+  if(num < 0 || num > 10)
+  {
+    shell_printf_P(intf, FSTR("invalid: setting number should be between 0 and 10\r\n"));
+    return;
+  }
+
+  switch(num)
+  {
+  case 0: // glow plug on duration for start
+    iv = atol(argv[2]);
+    if(iv < 30 || iv > 150)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between  30 and 150\r\n"));
+      return;
+    }
+    s->glow_plug_on_duration_for_start = iv * 1000;
+    break;
+
+  case 1: // oil pump priming duration
+    iv = atol(argv[2]);
+    if(iv < 5 || iv > 60)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between  5 and 60\r\n"));
+      return;
+    }
+    s->oil_pump_priming_duration = iv * 1000;
+    break;
+
+  case 2: // glow plug on duration for stop
+    iv = atol(argv[2]);
+    if(iv < 20 || iv > 60)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between  20 and 60\r\n"));
+      return;
+    }
+    s->glow_plug_on_duration_for_start = iv * 1000;
+    break;
+
+  case 3: // cooling down period
+    iv = atol(argv[2]);
+    if(iv < 60 || iv > 180)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between  60 and 180\r\n"));
+      return;
+    }
+    s->cooling_down_period = iv * 1000;
+    break;
+
+  case 4: // start up fan power
+    iv = atol(argv[2]);
+    if(iv < 10 || iv > 180)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between  10 and 180\r\n"));
+      return;
+    }
+    s->startup_fan_power = iv;
+    break;
+
+  case 5: // stop fan power
+    iv = atol(argv[2]);
+    if(iv < 10 || iv > 180)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between  10 and 180\r\n"));
+      return;
+    }
+    s->stop_fan_power = iv;
+    break;
+
+  case 6: // glow plug PWM frequency
+    iv = atol(argv[2]);
+    if(iv < 3 || iv > 20)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between 2 and 20\r\n"));
+      return;
+    }
+    s->glow_plug_pwm_freq = iv;
+    break;
+
+  case 7: // glow plug PWM duty
+    iv = atol(argv[2]);
+    if(iv < 5 || iv > 95)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between 5 and 95\r\n"));
+      return;
+    }
+    s->glow_plug_pwm_duty = iv;
+    break;
+
+  case 8: // oil pump frequency
+    fv = atof(argv[2]);
+    if(fcompare(fv, OIL_PUMP_MIN_FREQ) < 0 || fcompare(fv, OIL_PUMP_MAX_FREQ) > 0)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between 0.8 and 5.0\r\n"));
+      return;
+    }
+    s->oil_pump_freq = fv;
+    break;
+
+  case 9: // oil pump pulse length
+    iv = atol(argv[2]);
+    if(iv < 10 || iv > 100)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between  10 and 100\r\n"));
+      return;
+    }
+    s->oil_pump_pulse_length = iv;
+    break;
+
+  case 10: // fan default power
+    iv = atol(argv[2]);
+    if(iv < 10 || iv > 180)
+    {
+      shell_printf_P(intf, FSTR("invalid: value should be between  10 and 180\r\n"));
+      return;
+    }
+    s->fan_default_power = iv;
+    break;
+
+  default:
+    return;
+  }
+
+  shell_printf_P(intf, FSTR("done changing setting #%d. Be sure to save\r\n"), num);
+}
+
+static void
+shell_command_save(ShellIntf* intf, int argc, const char** argv)
+{
+  shell_printf_P(intf, FSTR("\r\nsaving changes to EEPROM...\r\n"));
+  settings_update();
+  shell_printf_P(intf, FSTR("done saving changes to EEPROM...\r\n"));
+}
+
+static void
+shell_command_reset(ShellIntf* intf, int argc, const char** argv)
+{
+  shell_printf_P(intf, FSTR("\r\nresettinging settings...\r\n"));
+  settings_reset();
+  shell_printf_P(intf, FSTR("done resetting settings...\r\n"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
