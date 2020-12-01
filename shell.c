@@ -69,6 +69,8 @@ static void shell_command_settings(ShellIntf* intf, int argc, const char** argv)
 static void shell_command_mod(ShellIntf* intf, int argc, const char** argv);
 static void shell_command_save(ShellIntf* intf, int argc, const char** argv);
 static void shell_command_reset(ShellIntf* intf, int argc, const char** argv);
+static void shell_command_step(ShellIntf* intf, int argc, const char** argv);
+static void shell_command_set(ShellIntf* intf, int argc, const char** argv);
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -197,6 +199,14 @@ static const ShellCommand const _commands[] =
     "reset",
     shell_command_reset,
   },
+  {
+    "step",
+    shell_command_step,
+  },
+  {
+    "set",
+    shell_command_set,
+  },
 };
 
 static const char* 
@@ -260,6 +270,9 @@ shell_command_help(ShellIntf* intf, int argc, const char** argv)
   shell_printf_P(intf, FSTR("settings            : show settings\r\n"));
   shell_printf_P(intf, FSTR("mod                 : change settings\r\n"));
   shell_printf_P(intf, FSTR("save                : save settings\r\n"));
+  shell_printf_P(intf, FSTR("reset               : reset settings to default\r\n"));
+  shell_printf_P(intf, FSTR("step                : modify step\r\n"));
+  shell_printf_P(intf, FSTR("set                 : set current step\r\n"));
 }
 
 static void
@@ -402,6 +415,7 @@ shell_command_status(ShellIntf* intf, int argc, const char** argv)
   shell_printf_P(intf, FSTR("fan   : %s, power %d%%\r\n"),
       on_off_str[heater->fan.on],
       heater->fan.pwr);
+  shell_printf_P(intf, FSTR("step  : %d\r\n"), heater->step);
 }
 
 static void
@@ -551,10 +565,20 @@ shell_command_settings(ShellIntf* intf, int argc, const char** argv)
   shell_printf_P(intf, FSTR("6. glow plug PWM frequency         %d Hz\r\n"), s->glow_plug_pwm_freq);
   shell_printf_P(intf, FSTR("7. glow plug PWM duty              %d %%\r\n"), s->glow_plug_pwm_duty);
 
-  __float_to_int_1dec(s->oil_pump_freq, &freq_int, &freq_dec);
-  shell_printf_P(intf, FSTR("8. oil pump frequency              %d.%d Hz\r\n"), freq_int, freq_dec);
+  __float_to_int_1dec(s->oil_pump_startup_freq, &freq_int, &freq_dec);
+  shell_printf_P(intf, FSTR("8. oil pump startup frequency      %d.%d Hz\r\n"), freq_int, freq_dec);
   shell_printf_P(intf, FSTR("9. oil pump pulse length           %d ms\r\n"), s->oil_pump_pulse_length);
-  shell_printf_P(intf, FSTR("10.fan default power               %d %%\r\n"), s->fan_default_power);
+
+  shell_printf_P(intf, FSTR("\r\n"));
+  for(uint8_t i = 0; i < MAX_OIL_PUMP_FAN_STEPS; i++)
+  {
+    __float_to_int_1dec(s->steps[i].pump_freq, &freq_int, &freq_dec);
+
+    shell_printf_P(intf, FSTR("step %d, oil pump freq %d.%d Hz, Fan %d%%\r\n"), 
+          i,
+          freq_int, freq_dec,
+          s->steps[i].fan_pwr);
+  }
 }
 
 static void
@@ -574,7 +598,7 @@ shell_command_mod(ShellIntf* intf, int argc, const char** argv)
   }
 
   num = atoi(argv[1]);
-  if(num < 0 || num > 10)
+  if(num < 0 || num > 9)
   {
     shell_printf_P(intf, FSTR("invalid: setting number should be between 0 and 10\r\n"));
     return;
@@ -669,7 +693,7 @@ shell_command_mod(ShellIntf* intf, int argc, const char** argv)
       shell_printf_P(intf, FSTR("invalid: value should be between 0.8 and 5.0\r\n"));
       return;
     }
-    s->oil_pump_freq = fv;
+    s->oil_pump_startup_freq = fv;
     break;
 
   case 9: // oil pump pulse length
@@ -680,16 +704,6 @@ shell_command_mod(ShellIntf* intf, int argc, const char** argv)
       return;
     }
     s->oil_pump_pulse_length = iv;
-    break;
-
-  case 10: // fan default power
-    iv = atol(argv[2]);
-    if(iv < 10 || iv > 180)
-    {
-      shell_printf_P(intf, FSTR("invalid: value should be between  10 and 180\r\n"));
-      return;
-    }
-    s->fan_default_power = iv;
     break;
 
   default:
@@ -713,6 +727,74 @@ shell_command_reset(ShellIntf* intf, int argc, const char** argv)
   shell_printf_P(intf, FSTR("\r\nresettinging settings...\r\n"));
   settings_reset();
   shell_printf_P(intf, FSTR("done resetting settings...\r\n"));
+}
+
+static void
+shell_command_step(ShellIntf* intf, int argc, const char** argv)
+{
+  float   freq;
+  uint8_t pwr;
+  uint8_t step;
+  settings_t*   s = settings_get();
+
+  shell_printf_P(intf, FSTR("\r\n"));
+
+  if(argc != 4)
+  {
+    shell_printf_P(intf, FSTR("invalid %s <step number> <pump freq> <fan pwr>\r\n"), argv[0]);
+    return;
+  }
+
+  step = atoi(argv[1]);
+  if(step < 0 || step >= MAX_OIL_PUMP_FAN_STEPS)
+  {
+    shell_printf_P(intf, FSTR("invalid step number\r\n"));
+    return;
+  }
+
+  freq = atof(argv[2]);
+  if(fcompare(freq, OIL_PUMP_MIN_FREQ) < 0 || fcompare(freq, OIL_PUMP_MAX_FREQ) > 0)
+  {
+    shell_printf_P(intf, FSTR("Invalid frequency\r\n"));
+    return;
+  }
+
+  pwr = atoi(argv[3]);
+  if(pwr < 0 || pwr > 100)
+  {
+    shell_printf_P(intf, FSTR("Invalid power\r\n"));
+    return;
+  }
+
+  s->steps[step].pump_freq = freq;
+  s->steps[step].fan_pwr = pwr;
+
+  shell_printf_P(intf, FSTR("changed settings of step #%d\r\n"), step);
+}
+
+static void
+shell_command_set(ShellIntf* intf, int argc, const char** argv)
+{
+  uint8_t step;
+
+  shell_printf_P(intf, FSTR("\r\n"));
+
+  if(argc != 2)
+  {
+    shell_printf_P(intf, FSTR("invalid %s <step number>\r\n"), argv[0]);
+    return;
+  }
+
+  step = atoi(argv[1]);
+  if(step < 0 || step >= MAX_OIL_PUMP_FAN_STEPS)
+  {
+    shell_printf_P(intf, FSTR("invalid step number\r\n"));
+    return;
+  }
+
+  heater_set_step(step);
+
+  shell_printf_P(intf, FSTR("changed current step to %d\r\n"), step);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

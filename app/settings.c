@@ -37,10 +37,14 @@ settings_reset(void)
   _settings.glow_plug_pwm_freq                = GLOW_PLUG_PWM_FREQ;
   _settings.glow_plug_pwm_duty                = GLOW_PLUG_PWM_DUTY;
 
-  _settings.oil_pump_freq                     = OIL_PUMP_DEF_FREQ;
+  _settings.oil_pump_startup_freq             = OIL_PUMP_DEF_FREQ;
   _settings.oil_pump_pulse_length             = OIL_PUMP_PULSE_LENGTH;
 
-  _settings.fan_default_power                 = FAN_DEFAULT_POWER;
+  for(uint8_t i = 0; i < MAX_OIL_PUMP_FAN_STEPS; i++)
+  {
+    _settings.steps[i].pump_freq = 1.0f + 0.4f * i;
+    _settings.steps[i].fan_pwr = 30 + 10 * i;
+  }
 
   settings_update();
 }

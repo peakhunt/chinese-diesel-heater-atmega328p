@@ -68,10 +68,10 @@ handle_heater_event_state_off(heater_event_t ev)
   {
   case heater_event_start_request:
     fan_start(&_heater.fan);
-    fan_set_power(&_heater.fan, HEATER_STARTUP_FAN_POWER);
+    fan_set_power(&_heater.fan, settings_get()->startup_fan_power);
     glow_plug_on(&_heater.glow_plug);
 
-    mainloop_timer_schedule(&_tmr, HEATER_HEATING_GLOW_PLUG_BEFORE_OIL_PUMP_PRIMING);
+    mainloop_timer_schedule(&_tmr, settings_get()->glow_plug_on_duration_for_start);
 
     heater_change_state(heater_state_heating_glow_plug_for_start);
     break;
@@ -89,7 +89,7 @@ handle_heater_event_state_heating_glow_plug_for_start(heater_event_t ev)
   case heater_event_heating_glow_plug_complete_for_start:
     oil_pump_on(&_heater.oil_pump);
 
-    mainloop_timer_schedule(&_tmr, HEATER_OIL_PUMP_PRIMING_BEFORE_GLOW_PLUG_TURN_OFF);
+    mainloop_timer_schedule(&_tmr, settings_get()->oil_pump_priming_duration);
 
     heater_change_state(heater_state_oil_pump_priming);
     break;
@@ -106,7 +106,8 @@ handle_heater_event_state_oil_pump_priming(heater_event_t ev)
   {
   case heater_event_oil_pump_priming_complete:
     glow_plug_off(&_heater.glow_plug);
-    fan_set_power(&_heater.fan, FAN_DEFAULT_POWER);
+
+    heater_set_step(0);
 
     heater_change_state(heater_state_running);
     break;
@@ -122,11 +123,11 @@ handle_heater_event_state_running(heater_event_t ev)
   switch(ev)
   {
   case heater_event_stop_request:
-    fan_set_power(&_heater.fan, HEATER_STOP_FAN_POWER);
+    fan_set_power(&_heater.fan, settings_get()->stop_fan_power);
     oil_pump_off(&_heater.oil_pump);
     glow_plug_on(&_heater.glow_plug);
 
-    mainloop_timer_schedule(&_tmr, HEATER_HEATING_GLOW_PLUG_BEFORE_COOLING_DOWN);
+    mainloop_timer_schedule(&_tmr, settings_get()->glow_plug_on_duration_for_stop);
 
     heater_change_state(heater_state_heating_glow_plug_for_stop);
     break;
@@ -144,7 +145,7 @@ handle_heater_event_state_heating_glow_plug_for_stop(heater_event_t ev)
   case heater_event_heating_glow_plug_complete_for_stop:
     glow_plug_off(&_heater.glow_plug);
 
-    mainloop_timer_schedule(&_tmr, HEATER_COOLING_DOWN_AFTER_GLOW_PLUG_TURN_OFF);
+    mainloop_timer_schedule(&_tmr, settings_get()->cooling_down_period);
 
     heater_change_state(heater_state_cooling_down);
     break;
@@ -212,6 +213,7 @@ heater_init(void)
   settings_init();
 
   _heater.state = heater_state_off;
+  _heater.step  = 0;
 
   glow_plug_init(&_heater.glow_plug, gpio_out_pin_pd2);
   oil_pump_init(&_heater.oil_pump, gpio_out_pin_pd3);
@@ -279,6 +281,14 @@ void
 heater_fan_off(void)
 {
   fan_stop(&_heater.fan);
+}
+
+void
+heater_set_step(uint8_t step)
+{
+  fan_set_power(&_heater.fan, settings_get()->steps[step].fan_pwr);
+  oil_pump_change_freq(&_heater.oil_pump, settings_get()->steps[step].pump_freq);
+  _heater.step = step;
 }
 
 void

@@ -3,6 +3,13 @@
 
 #include "app_common.h"
 
+#define MAX_OIL_PUMP_FAN_STEPS      5
+typedef struct
+{
+  float       pump_freq;
+  uint8_t     fan_pwr;
+} oil_pump_fan_step_t;
+
 typedef struct
 {
   uint32_t        magic;
@@ -18,10 +25,10 @@ typedef struct
   uint8_t         glow_plug_pwm_freq;
   uint8_t         glow_plug_pwm_duty;
 
-  float           oil_pump_freq;
+  float           oil_pump_startup_freq;
   uint8_t         oil_pump_pulse_length;
 
-  uint8_t         fan_default_power;
+  oil_pump_fan_step_t steps[MAX_OIL_PUMP_FAN_STEPS];
 } settings_t;
 
 extern void settings_init(void);

@@ -1,11 +1,14 @@
 #include "glow_plug.h"
+#include "settings.h"
 
 void
 glow_plug_init(glow_plug_t* gp, gpio_out_pin_t pin)
 {
   gp->on        = false;
 
-  soft_pwm_init(&gp->pwm, pin, GLOW_PLUG_PWM_FREQ, GLOW_PLUG_PWM_DUTY);
+  soft_pwm_init(&gp->pwm, pin,
+      settings_get()->glow_plug_pwm_freq,
+      settings_get()->glow_plug_pwm_duty);
 }
 
 void
