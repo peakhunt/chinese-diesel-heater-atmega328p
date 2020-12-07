@@ -219,6 +219,10 @@ heater_init(void)
   oil_pump_init(&_heater.oil_pump, gpio_out_pin_pd3);
   fan_init(&_heater.fan, pwm_channel_0);
 
+  //
+  // 5V source. 51K R2 in voltage divider circuit
+  //
+  ntc50_init(&_heater.outlet_temp, 5, 51 * 1000.0f, adc_channel_0);
   soft_timer_init_elem(&_tmr);
   _tmr.cb = heater_timer_callback;
 }

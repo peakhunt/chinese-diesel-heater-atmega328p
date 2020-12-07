@@ -21,6 +21,7 @@ SOURCES :=        main.c                \
                   app/glow_plug.c       \
                   app/oil_pump.c        \
                   app/fan.c             \
+                  app/ntc50.c           \
                   app/heater.c          \
                   app/settings.c
 

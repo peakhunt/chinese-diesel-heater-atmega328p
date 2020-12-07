@@ -4,9 +4,9 @@
 #include "soft_timer.h"
 #include "mainloop_timer.h"
 
-#define ADC_DELAY_VALUE       100       // 100ms
+#define ADC_DELAY_VALUE       50       // 100ms
 
-static adcsample_t            _sampels[ADC_MAX_CHANNELS];
+static adcsample_t            _samples[ADC_MAX_CHANNELS];
 static volatile adcsample_t   _curr_sample;
 static uint8_t                _curr_ch;
 static SoftTimerElem          _delay_tmr;
@@ -21,7 +21,7 @@ adc_read_callback(adc_channels_num_t ch, adcsample_t sample)
 static void
 adc_read_complete(uint32_t event)
 {
-  _sampels[_curr_ch] = _curr_sample;
+  _samples[_curr_ch] = _curr_sample;
 
   _curr_ch++;
   if(_curr_ch >= ADC_MAX_CHANNELS)
@@ -48,10 +48,10 @@ adc_reader_init(void)
   event_register_handler(adc_read_complete, DISPATCH_EVENT_ADC_COMPLETE);
   adc_init(ADCRef_AVCC, ADCPrescaler_DIV_128);
 
-  _sampels[0] =
-  _sampels[1] =
-  _sampels[2] = 
-  _sampels[3] = 0;
+  _samples[0] =
+  _samples[1] =
+  _samples[2] = 
+  _samples[3] = 0;
 
   _curr_sample = 0;
   _curr_ch = 0;
@@ -62,5 +62,17 @@ adc_reader_init(void)
 adcsample_t
 adc_get(adc_channel_t ch)
 {
-  return _sampels[ch];
+  return _samples[ch];
+}
+
+float
+adc_get_volt(adc_channel_t ch)
+{
+  float v;
+  adcsample_t   adc;
+
+  adc = adc_get(ch);
+
+  v = 5.0f * adc / 1023.0f;
+  return v;
 }

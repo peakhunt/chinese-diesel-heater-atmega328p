@@ -16,5 +16,6 @@ typedef enum
 
 extern void adc_reader_init(void);
 extern adcsample_t adc_get(adc_channel_t ch);
+extern float adc_get_volt(adc_channel_t ch);
 
 #endif /* !__ADC_READER_DEF_H__ */

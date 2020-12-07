@@ -416,6 +416,16 @@ shell_command_status(ShellIntf* intf, int argc, const char** argv)
       on_off_str[heater->fan.on],
       heater->fan.pwr);
   shell_printf_P(intf, FSTR("step  : %d\r\n"), heater->step);
+
+  {
+    int i_part, d_part;
+
+    i_part = (int)heater->outlet_temp.temp;
+    d_part = abs((heater->outlet_temp.temp - i_part) * 10);
+
+    shell_printf_P(intf, FSTR("outlet : %d.%d C\r\n"),
+        i_part, d_part);
+  }
 }
 
 static void

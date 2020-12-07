@@ -4,6 +4,7 @@
 #include "glow_plug.h"
 #include "oil_pump.h"
 #include "fan.h"
+#include "ntc50.h"
 #include "settings.h"
 
 #define HEATER_HEATING_GLOW_PLUG_BEFORE_OIL_PUMP_PRIMING        90000     // 90 second
@@ -30,6 +31,7 @@ typedef struct
   glow_plug_t       glow_plug;
   oil_pump_t        oil_pump;
   fan_t             fan;
+  ntc50_t           outlet_temp;
   uint8_t           step;
 } heater_t;
 
