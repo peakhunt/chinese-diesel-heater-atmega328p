@@ -6,7 +6,7 @@
 #include "soft_pwm.h"
 
 #define GLOW_PLUG_PWM_FREQ            10      // 10 Hz
-#define GLOW_PLUG_PWM_DUTY            35      // 35ms duty out of 100ms
+#define GLOW_PLUG_PWM_DUTY            45      // 35ms duty out of 100ms
 
 #define GLOW_PLUG_MIN_DUTY            10
 #define GLOW_PLUG_MAX_DUTY            80

@@ -8,12 +8,12 @@
 #include "settings.h"
 
 #define HEATER_HEATING_GLOW_PLUG_BEFORE_OIL_PUMP_PRIMING        90000     // 90 second
-#define HEATER_OIL_PUMP_PRIMING_BEFORE_GLOW_PLUG_TURN_OFF       30000     // 30 second
+#define HEATER_OIL_PUMP_PRIMING_BEFORE_GLOW_PLUG_TURN_OFF       45000     // 45 second
 #define HEATER_HEATING_GLOW_PLUG_BEFORE_COOLING_DOWN            30000     // 30 second
-#define HEATER_COOLING_DOWN_AFTER_GLOW_PLUG_TURN_OFF            90000     // 90 second
+#define HEATER_COOLING_DOWN_AFTER_GLOW_PLUG_TURN_OFF            180000    // 180 second
 
-#define HEATER_STARTUP_FAN_POWER                                65        // 65%
-#define HEATER_STOP_FAN_POWER                                   65        // 65%
+#define HEATER_STARTUP_FAN_POWER                                45        // 45%
+#define HEATER_STOP_FAN_POWER                                   75        // 75%
 
 typedef enum
 {

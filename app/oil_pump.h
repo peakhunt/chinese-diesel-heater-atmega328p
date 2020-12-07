@@ -5,7 +5,7 @@
 #include "gpio.h"
 #include "soft_pwm.h"
 
-#define OIL_PUMP_DEF_FREQ     1.0f      // 1.6Hz
+#define OIL_PUMP_DEF_FREQ     1.8f      // 1.8Hz
 #define OIL_PUMP_PULSE_LENGTH 50        // 50ms
 
 #define OIL_PUMP_MIN_FREQ     0.8f
