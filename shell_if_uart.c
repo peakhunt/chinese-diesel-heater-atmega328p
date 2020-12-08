@@ -37,12 +37,20 @@ shell_if_uart_event_handler(uint32_t event)
 static void
 shell_if_uart_enter_critical(CircBuffer* cb)
 {
+  //
+  // XXX better save SREG and disable interrupt
+  // but this doesn't hurt in this application
+  //
   cli();
 }
 
 static void
 shell_if_uart_leave_critical(CircBuffer* cb)
 {
+  //
+  // XXX better restore SREG than just enable interrupt
+  // but this doesn't hurt in this application
+  //
   sei();
 }
 
