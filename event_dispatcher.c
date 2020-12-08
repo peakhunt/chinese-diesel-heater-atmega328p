@@ -6,6 +6,7 @@
  */ 
 
 #include <avr/interrupt.h>
+#include <util/atomic.h>
 #include <stdint.h>
 #include "app_common.h"
 #include "event_dispatcher.h"
@@ -66,11 +67,10 @@ event_dispatcher_init(void)
 void
 event_set(uint32_t bits)
 {
-  cli();
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
   {
     _events |= bits;
   }
-  sei();
 
   return;
 }
