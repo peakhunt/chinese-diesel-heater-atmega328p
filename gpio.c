@@ -167,6 +167,8 @@ init_input_pins(void)
     soft_timer_init_elem(&_inputs[i].debounce_tmr);
     _inputs[i].debounce_tmr.cb = debounce_tmr_callback;
     _inputs[i].debounce_tmr.priv = &_inputs[i];
+    _inputs[i].listener = NULL;
+    _inputs[i].arg = NULL;
   }
 }
 
