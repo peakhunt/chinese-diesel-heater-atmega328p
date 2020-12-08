@@ -27,12 +27,11 @@ event_dispatcher_event_dispatch(void)
     return;
   }
 
-  cli();
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
   {
     evt = _events;
     _events = 0;
   }
-  sei();
 
   if(evt == 0)
   {
