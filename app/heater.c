@@ -217,7 +217,7 @@ heater_init(void)
 
   glow_plug_init(&_heater.glow_plug, gpio_out_pin_pd2);
   oil_pump_init(&_heater.oil_pump, gpio_out_pin_pd3);
-  fan_init(&_heater.fan, pwm_channel_0);
+  fan_init(&_heater.fan, pwm_channel_0, gpio_in_pin_pd5);
 
   //
   // 5V source. 51K R2 in voltage divider circuit

@@ -402,6 +402,12 @@ shell_command_status(ShellIntf* intf, int argc, const char** argv)
 {
   const heater_t* heater = heater_get();
   uint8_t   freq_int, freq_dec;
+  static const char* motor_state_str[] = 
+  {
+    "not rotating",
+    "starting",
+    "rotating",
+  };
 
   __float_to_int_1dec(heater->oil_pump.freq, &freq_int, &freq_dec);
 
@@ -412,8 +418,9 @@ shell_command_status(ShellIntf* intf, int argc, const char** argv)
       on_off_str[heater->oil_pump.on],
       freq_int, freq_dec);
   shell_printf_P(intf, FSTR("glow  : %s\r\n"), on_off_str[heater->glow_plug.on]);
-  shell_printf_P(intf, FSTR("fan   : %s, power %d%%\r\n"),
+  shell_printf_P(intf, FSTR("fan   : %s, %s, power %d%%\r\n"),
       on_off_str[heater->fan.on],
+      motor_state_str[heater->fan.motor_state],
       heater->fan.pwr);
   shell_printf_P(intf, FSTR("step  : %d\r\n"), heater->step);
 
