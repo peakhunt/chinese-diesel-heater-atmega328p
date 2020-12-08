@@ -40,11 +40,21 @@ settings_reset(void)
   _settings.oil_pump_startup_freq             = OIL_PUMP_DEF_FREQ;
   _settings.oil_pump_pulse_length             = OIL_PUMP_PULSE_LENGTH;
 
-  for(uint8_t i = 0; i < MAX_OIL_PUMP_FAN_STEPS; i++)
-  {
-    _settings.steps[i].pump_freq = 1.0f + 0.4f * i;
-    _settings.steps[i].fan_pwr = 30 + 10 * i;
-  }
+  // optimal settings I found after some experiment
+  _settings.steps[0].pump_freq  = 1.0f;
+  _settings.steps[0].fan_pwr    = 45;
+
+  _settings.steps[1].pump_freq  = 1.8f;
+  _settings.steps[1].fan_pwr    = 50;
+
+  _settings.steps[2].pump_freq  = 2.5f;
+  _settings.steps[2].fan_pwr    = 60;
+
+  _settings.steps[3].pump_freq  = 3.5f;
+  _settings.steps[3].fan_pwr    = 70;
+
+  _settings.steps[4].pump_freq  = 4.5f;
+  _settings.steps[4].fan_pwr    = 75;
 
   settings_update();
 }
