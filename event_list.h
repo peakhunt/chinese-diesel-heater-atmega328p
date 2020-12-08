@@ -10,8 +10,4 @@
 
 #define DISPATCH_EVENT_HEATER_STATE         10
 
-#define DISPATCH_EVENT_GPIO_IN_0            12
-#define DISPATCH_EVENT_GPIO_IN_1            13
-#define DISPATCH_EVENT_GPIO_IN_2            14
-
 #endif //!__EVENT_LIST_DEF_H__

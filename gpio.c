@@ -13,7 +13,9 @@ typedef struct
   gpio_input_state_t      state;
   SoftTimerElem           debounce_tmr;
   uint8_t                 pin;
-  uint8_t                 event;
+  bool                    use_debounce;
+  gpio_listener           listener;
+  void*                   arg;
 } gpio_input_t;
 
 #define GPIO_SET(port, bv, val)       \
@@ -31,19 +33,25 @@ static gpio_input_t   _inputs[GPIO_MAX_INPUT] =
   {
     .pin_name = gpio_in_pin_pd5,
     .pin = PD5,
-    .event = DISPATCH_EVENT_GPIO_IN_0,
+    .use_debounce = true,
   },
   {
     .pin_name = gpio_in_pin_pd6,
     .pin = PD6,
-    .event = DISPATCH_EVENT_GPIO_IN_1,
+    .use_debounce = true,
   },
   {
     .pin_name = gpio_in_pin_pd7,
     .pin = PD7,
-    .event = DISPATCH_EVENT_GPIO_IN_2,
+    .use_debounce = true,
   },
 };
+
+#define INVOKE_CALLBACK(i)                        \
+  if(i->listener != NULL)                         \
+  {                                               \
+    i->listener(i->pin_name, i->state, i->arg);   \
+  }
 
 ISR(PCINT2_vect)
 {
@@ -62,43 +70,72 @@ handle_pin_change(uint32_t event)
 
     pv = (PIND & _BV(input->pin)) == 0 ? 0 : 1;
 
-    switch(input->state)
+    if(input->use_debounce)
     {
-    case gpio_input_state_low:
-      if(pv)
+      switch(input->state)
       {
-        // goes high
-        input->state = gpio_input_state_low_to_high;
-        mainloop_timer_schedule(&input->debounce_tmr, PIN_CHANGE_DEBOUNCE_TIME);
-      }
-      break;
+      case gpio_input_state_low:
+        if(pv)
+        {
+          // goes high
+          input->state = gpio_input_state_low_to_high;
+          mainloop_timer_schedule(&input->debounce_tmr, PIN_CHANGE_DEBOUNCE_TIME);
+        }
+        break;
 
-    case gpio_input_state_low_to_high:
-      if(pv == 0)
-      {
-        // goes low again
-        input->state = gpio_input_state_low;
-        mainloop_timer_cancel(&input->debounce_tmr);
-      }
-      break;
+      case gpio_input_state_low_to_high:
+        if(pv == 0)
+        {
+          // goes low again
+          input->state = gpio_input_state_low;
+          mainloop_timer_cancel(&input->debounce_tmr);
+        }
+        break;
 
-    case gpio_input_state_high:
-      if(pv == 0)
-      {
-        // goes low
-        input->state = gpio_input_state_high_to_low;
-        mainloop_timer_schedule(&input->debounce_tmr, PIN_CHANGE_DEBOUNCE_TIME);
-      }
-      break;
+      case gpio_input_state_high:
+        if(pv == 0)
+        {
+          // goes low
+          input->state = gpio_input_state_high_to_low;
+          mainloop_timer_schedule(&input->debounce_tmr, PIN_CHANGE_DEBOUNCE_TIME);
+        }
+        break;
 
-    case gpio_input_state_high_to_low:
-      if(pv)
-      {
-        // goes high again
-        input->state = gpio_input_state_high;
-        mainloop_timer_cancel(&input->debounce_tmr);
+      case gpio_input_state_high_to_low:
+        if(pv)
+        {
+          // goes high again
+          input->state = gpio_input_state_high;
+          mainloop_timer_cancel(&input->debounce_tmr);
+        }
+        break;
       }
-      break;
+    }
+    else
+    {
+      switch(input->state)
+      {
+      case gpio_input_state_low:
+        if(pv)
+        {
+          // goes high
+          input->state = gpio_input_state_high;
+          INVOKE_CALLBACK(input);
+        }
+        break;
+
+      case gpio_input_state_high:
+        if(pv == 0)
+        {
+          // goes low
+          input->state = gpio_input_state_low;
+          INVOKE_CALLBACK(input);
+        }
+        break;
+
+      default:
+        break;
+      }
     }
   }
 }
@@ -111,12 +148,12 @@ debounce_tmr_callback(SoftTimerElem* te)
   if(input->state == gpio_input_state_low_to_high)
   {
     input->state = gpio_input_state_high;
-    event_set(1 << input->event);
+    INVOKE_CALLBACK(input);
   }
   else if(input->state == gpio_input_state_high_to_low)
   {
     input->state = gpio_input_state_low;
-    event_set(1 << input->event);
+    INVOKE_CALLBACK(input);
   }
 }
 
@@ -191,8 +228,36 @@ gpio_get(gpio_in_pin_t pin)
   return true;
 }
 
+void
+gpio_set_debounce(gpio_in_pin_t pin, bool debounce)
+{
+  gpio_input_t*   input;
+
+  input = &_inputs[pin];
+
+  input->use_debounce = debounce;
+  mainloop_timer_cancel(&input->debounce_tmr);
+
+  if(input->state == gpio_input_state_low_to_high)
+  {
+    input->state = gpio_input_state_high;
+  }
+  else if(input->state == gpio_input_state_high_to_low)
+  {
+    input->state = gpio_input_state_low;
+  }
+}
+
+
 gpio_input_state_t
 gpio_get_state(gpio_in_pin_t pin)
 {
   return _inputs[pin].state;
+}
+
+void
+gpio_listen(gpio_in_pin_t pin, gpio_listener listener, void* arg)
+{
+  _inputs[pin].listener = listener;
+  _inputs[pin].arg      = arg;
 }
