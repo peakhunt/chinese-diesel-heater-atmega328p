@@ -2,10 +2,14 @@
 #include "ntc50.h"
 
 #define LPF_Beta      0.025         // 0 < B < 1
+#define THERMISTOR_NOMINAL          50000       // 50K
+#define TEMPERTURE_NOMINAL          25          // 25 C
+#define BCOEFFICIENT                3950        // b3950 thermistor
 
 static inline void
 ntc50_calc_temp(ntc50_t* ntc50)
 {
+#if 0
   const float c1 = 1.009249522e-03,
               c2 = 2.378405444e-04,
               c3 = 2.019202697e-07;
@@ -20,6 +24,18 @@ ntc50_calc_temp(ntc50_t* ntc50)
   // pass T through low pass filter
   //
   ntc50->temp = ntc50->temp - (LPF_Beta * (ntc50->temp - T));
+#else
+  float steinhart;
+
+  steinhart = ntc50->r1 / THERMISTOR_NOMINAL;
+  steinhart = log(steinhart);
+  steinhart /= BCOEFFICIENT;
+  steinhart += 1.0 / (TEMPERTURE_NOMINAL + 273.15);
+  steinhart = 1.0 / steinhart;
+  steinhart -= 273.15;
+
+  ntc50->temp = ntc50->temp - (LPF_Beta * (ntc50->temp - steinhart));
+#endif
 }
 
 static void
@@ -27,7 +43,6 @@ ntc50_adc_listener(adc_channel_t ch, adcsample_t sample, void* arg)
 {
   ntc50_t* ntc50 = (ntc50_t*)arg;
   float         vout;
-
   vout = adc_get_volt(ntc50->chnl);
   //
   // just to prevent floating point error
