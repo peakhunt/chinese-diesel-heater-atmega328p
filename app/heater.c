@@ -88,6 +88,8 @@ handle_heater_event_state_heating_glow_plug_for_start(heater_event_t ev)
   {
   case heater_event_heating_glow_plug_complete_for_start:
     oil_pump_on(&_heater.oil_pump);
+    oil_pump_change_freq(&_heater.oil_pump,
+        settings_get()->oil_pump_startup_freq);
 
     mainloop_timer_schedule(&_tmr, settings_get()->oil_pump_priming_duration);
 
