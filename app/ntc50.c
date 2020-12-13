@@ -9,22 +9,6 @@
 static inline void
 ntc50_calc_temp(ntc50_t* ntc50)
 {
-#if 0
-  const float c1 = 1.009249522e-03,
-              c2 = 2.378405444e-04,
-              c3 = 2.019202697e-07;
-  float logR = logR = log(ntc50->r1);
-  float T;
-
-  T = (1.0 / (c1 + c2*logR + c3*logR*logR*logR));
-  T = T - 273.15;
-  T = (T * 9.0)/ 5.0 + 32.0; 
-
-  //
-  // pass T through low pass filter
-  //
-  ntc50->temp = ntc50->temp - (LPF_Beta * (ntc50->temp - T));
-#else
   float steinhart;
 
   steinhart = ntc50->r1 / THERMISTOR_NOMINAL;
@@ -35,7 +19,6 @@ ntc50_calc_temp(ntc50_t* ntc50)
   steinhart -= 273.15;
 
   ntc50->temp = ntc50->temp - (LPF_Beta * (ntc50->temp - steinhart));
-#endif
 }
 
 static void
