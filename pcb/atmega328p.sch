@@ -460,7 +460,6 @@ NoConn ~ 3700 4750
 NoConn ~ 950  3950
 NoConn ~ 950  4550
 NoConn ~ 950  4750
-NoConn ~ 3700 4250
 Wire Wire Line
 	2250 1700 2250 1750
 $Comp
@@ -751,4 +750,69 @@ Text Label 4200 6250 1    50   ~ 0
 GND
 Text Label 4100 6250 1    50   ~ 0
 5V
+$Comp
+L Connector_Generic:Conn_01x02 J12
+U 1 1 602AB30C
+P 5000 1500
+F 0 "J12" V 4964 1312 50  0000 R CNN
+F 1 "Power" V 4873 1312 50  0000 R CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 5000 1500 50  0001 C CNN
+F 3 "~" H 5000 1500 50  0001 C CNN
+	1    5000 1500
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	5100 1700 5100 2200
+Text Label 5000 2000 1    50   ~ 0
+12V
+Text Label 5100 2000 1    50   ~ 0
+GND
+$Comp
+L Device:R R12
+U 1 1 602B3904
+P 5000 2450
+F 0 "R12" H 5070 2496 50  0000 L CNN
+F 1 "6.8K" H 5070 2405 50  0000 L CNN
+F 2 "Resistor_SMD:R_0201_0603Metric_Pad0.64x0.40mm_HandSolder" V 4930 2450 50  0001 C CNN
+F 3 "~" H 5000 2450 50  0001 C CNN
+	1    5000 2450
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5000 1700 5000 2300
+$Comp
+L Device:R R13
+U 1 1 602B79CD
+P 5000 2850
+F 0 "R13" H 5070 2896 50  0000 L CNN
+F 1 "3.3K" H 5070 2805 50  0000 L CNN
+F 2 "Resistor_SMD:R_0201_0603Metric_Pad0.64x0.40mm_HandSolder" V 4930 2850 50  0001 C CNN
+F 3 "~" H 5000 2850 50  0001 C CNN
+	1    5000 2850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5000 2700 5000 2650
+$Comp
+L power:GND #PWR07
+U 1 1 602BF206
+P 5000 3150
+F 0 "#PWR07" H 5000 2900 50  0001 C CNN
+F 1 "GND" H 5005 2977 50  0000 C CNN
+F 2 "" H 5000 3150 50  0001 C CNN
+F 3 "" H 5000 3150 50  0001 C CNN
+	1    5000 3150
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5000 3150 5000 3000
+Wire Wire Line
+	5000 2650 4250 2650
+Connection ~ 5000 2650
+Wire Wire Line
+	5000 2650 5000 2600
+Text Label 4500 2650 0    50   ~ 0
+VPWR
+Text Label 3250 4250 0    50   ~ 0
+VPWR
 $EndSCHEMATC
