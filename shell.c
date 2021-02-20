@@ -432,6 +432,11 @@ shell_command_status(ShellIntf* intf, int argc, const char** argv)
 
     shell_printf_P(intf, FSTR("outlet : %d.%d C\r\n"),
         i_part, d_part);
+
+    i_part = (int)heater->room_temp.temp;
+    d_part = abs((heater->room_temp.temp - i_part) * 10);
+    shell_printf_P(intf, FSTR("room   : %d.%d C\r\n"),
+        i_part, d_part);
   }
 }
 
